@@ -1,5 +1,8 @@
 #include "common.h"
 
+#include <fnmatch.h>
+#include <string.h>
+
 int parse_args(struct Args* args, int argc, char** argv) {
     memset(args, 0, sizeof(struct Args));
     int c;
@@ -44,7 +47,7 @@ int check_int64_error_set_default(int64_t* out, int64_t def, GError* error) {
         *out = def;
         return 0;
     }
-        error_reading_config(error);
+    error_reading_config(error);
     return 1;
 }
 
@@ -55,7 +58,7 @@ int check_string_list_error(GError* error) {
     if (g_error_matches(error, G_KEY_FILE_ERROR, G_KEY_FILE_ERROR_KEY_NOT_FOUND)) {
         return 0;
     }
-        error_reading_config(error);
+    error_reading_config(error);
     return 1;
 }
 
@@ -80,6 +83,31 @@ int parse_ent_options(struct EntOptions* options, GKeyFile* key_file, const char
     options->whitelist = g_key_file_get_string_list(
         key_file, group_name, "Whitelist", &options->whitelist_len, &error);
     if (check_string_list_error(error)) {
+        return 1;
+    }
+    return 0;
+}
+
+int wildcard_list_contains(size_t len, char* const* list, const char* value) {
+    for (size_t i = 0; i < len; ++i) {
+        if (0 == fnmatch(list[i], value, 0)) {
+            return 1;
+        }
+    }
+    return 0;
+}
+
+int should_skip_ent(const struct EntOptions* options, int64_t id, const char* name) {
+    if (wildcard_list_contains(options->whitelist_len, options->whitelist, name)) {
+        return 0;
+    }
+    if (id < options->min_id) {
+        return 1;
+    }
+    if (id > options->max_id) {
+        return 1;
+    }
+    if (wildcard_list_contains(options->blacklist_len, options->blacklist, name)) {
         return 1;
     }
     return 0;

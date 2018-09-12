@@ -35,3 +35,5 @@ int check_int64_error_set_default(int64_t* out, int64_t def, GError* error);
 int check_string_list_error(GError* error);
 
 int parse_ent_options(struct EntOptions* options, GKeyFile* key_file, const char* group_name);
+
+int should_skip_ent(const struct EntOptions* options, int64_t id, const char* name);
