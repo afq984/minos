@@ -15,13 +15,20 @@ struct MinosState {
     FILE* file;
 };
 
-struct MinosState passwd_state = {.pathname = ETC "/passwd.minos", .file = NULL};
-struct MinosState group_state = {.pathname = ETC "/group.minos", .file = NULL};
-struct MinosState shadow_state = {.pathname = ETC "/shadow.minos", .file = NULL};
+#define PASSWD_FILE (ETC "/passwd.minos")
+#define GROUP_FILE (ETC "/group.minos")
+#define SHADOW_FILE (ETC "/shadow.minos")
+static struct MinosState passwd_state = {.pathname = PASSWD_FILE, .file = NULL};
+static struct MinosState group_state = {.pathname = GROUP_FILE, .file = NULL};
+static struct MinosState shadow_state = {.pathname = SHADOW_FILE, .file = NULL};
 
-enum nss_status minos_open(struct MinosState* st, int* errnop) {
+static enum nss_status minos_open(struct MinosState* st, int* errnop) {
     int errno_backup = errno;
-    st->file = freopen(st->pathname, "r", st->file);
+    if (st->file == NULL) {
+        st->file = fopen(st->pathname, "r");
+    } else {
+        st->file = freopen(st->pathname, "r", st->file);
+    }
     enum nss_status status = NSS_STATUS_SUCCESS;
     if (st->file == NULL) {
         if (errno == EACCES || errno == ERANGE) {
@@ -35,14 +42,16 @@ enum nss_status minos_open(struct MinosState* st, int* errnop) {
     return status;
 }
 
-enum nss_status minos_setent(struct MinosState* st) {
+static enum nss_status minos_setent(struct MinosState* st) {
     int errno_discard;
     return minos_open(st, &errno_discard);
 }
 
-enum nss_status minos_endent(struct MinosState* st) {
+static enum nss_status minos_endent(struct MinosState* st) {
     int errno_backup = errno;
-    fclose(st->file);
+    if (st->file != NULL) {
+        fclose(st->file);
+    }
     st->file = NULL;
     errno = errno_backup;
     return NSS_STATUS_SUCCESS;
@@ -82,7 +91,9 @@ enum nss_status minos_endent(struct MinosState* st) {
                 break;                                                                     \
             }                                                                              \
         }                                                                                  \
-        fclose(state.file);                                                                \
+        if (state.file != NULL) {                                                          \
+            fclose(state.file);                                                            \
+        }                                                                                  \
         if (error) {                                                                       \
             *errnop = error;                                                               \
             if (error == ENOENT) {                                                         \
@@ -104,12 +115,12 @@ enum nss_status _nss_minos_getpwent_r(
 
 enum nss_status _nss_minos_getpwnam_r(
     const char* name, struct passwd* result, char* buffer, size_t buflen, int* errnop) {
-    GETXXBYYY(ETC "passwd.minos", struct passwd, fgetpwent_r, 0 == strcmp(name, result->pw_name));
+    GETXXBYYY(PASSWD_FILE, struct passwd, fgetpwent_r, 0 == strcmp(name, result->pw_name));
 }
 
 enum nss_status _nss_minos_getpwuid_r(
     uid_t uid, struct passwd* result, char* buffer, size_t buflen, int* errnop) {
-    GETXXBYYY(ETC "passwd.minos", struct passwd, fgetpwent_r, uid == result->pw_uid);
+    GETXXBYYY(PASSWD_FILE, struct passwd, fgetpwent_r, uid == result->pw_uid);
 }
 
 enum nss_status _nss_minos_setgrent(void) { return minos_setent(&group_state); }
@@ -123,12 +134,12 @@ enum nss_status _nss_minos_getgrent_r(
 
 enum nss_status _nss_minos_getgrnam_r(
     const char* name, struct group* result, char* buffer, size_t buflen, int* errnop) {
-    GETXXBYYY(ETC "group.minos", struct group, fgetgrent_r, 0 == strcmp(name, result->gr_name));
+    GETXXBYYY(GROUP_FILE, struct group, fgetgrent_r, 0 == strcmp(name, result->gr_name));
 }
 
 enum nss_status _nss_minos_getgrgid_r(
     gid_t gid, struct group* result, char* buffer, size_t buflen, int* errnop) {
-    GETXXBYYY(ETC "group.minos", struct group, fgetgrent_r, gid == result->gr_gid);
+    GETXXBYYY(GROUP_FILE, struct group, fgetgrent_r, gid == result->gr_gid);
 }
 
 enum nss_status _nss_minos_setspent(void) { return minos_setent(&shadow_state); }
@@ -142,5 +153,5 @@ enum nss_status _nss_minos_getspent_r(
 
 enum nss_status _nss_minos_getspnam_r(
     const char* name, struct spwd* result, char* buffer, size_t buflen, int* errnop) {
-    GETXXBYYY(ETC "shadow.minos", struct spwd, fgetspent_r, 0 == strcmp(name, result->sp_namp));
+    GETXXBYYY(SHADOW_FILE, struct spwd, fgetspent_r, 0 == strcmp(name, result->sp_namp));
 }

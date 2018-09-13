@@ -29,6 +29,11 @@ shared_library(
     install: true
 )
 
+minos_preload = shared_library(
+    'minos_preload',
+    'preload.c'
+)
+
 install_data(
     'systemd/minos-server.service', 'systemd/minos-client.service',
     install_dir: systemd_unit_dir
