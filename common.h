@@ -15,11 +15,12 @@ int parse_args(struct Args* args, int argc, char** argv);
 
 void error_reading_config(const GError* error);
 
-struct NetOptions {
+struct MinosOptions {
     char* address;
+    char* sysconfdir;
 };
 
-int parse_net_options(struct NetOptions* options, GKeyFile* key_file);
+int parse_minos_options(struct MinosOptions* options, GKeyFile* key_file);
 
 struct EntOptions {
     int64_t min_id;

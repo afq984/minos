@@ -8,7 +8,14 @@ zmq = dependency('libzmq')
 
 executable(
     'minos-server',
-    'common.c', 'server.c',
+    'server.c', 'common.c',
+    dependencies: [glib, zmq],
+    install: true
+)
+
+executable(
+    'minos-client',
+    'client.c', 'common.c', 'atomic_update_file.c',
     dependencies: [glib, zmq],
     install: true
 )

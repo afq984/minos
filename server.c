@@ -110,8 +110,8 @@ int main(int argc, char** argv) {
         fprintf(stderr, "Error loading config file %s: %s\n", args.config_file, error->message);
         return 1;
     }
-    struct NetOptions net_conf = {0};
-    if (parse_net_options(&net_conf, key_file)) {
+    struct MinosOptions minos_conf = {0};
+    if (parse_minos_options(&minos_conf, key_file)) {
         return 1;
     }
     struct EntOptions user_conf = {0};
@@ -133,7 +133,7 @@ int main(int argc, char** argv) {
         perror("Cannot create 0MQ socket");
         return 1;
     }
-    if (0 != zmq_bind(zsock, net_conf.address)) {
+    if (0 != zmq_bind(zsock, minos_conf.address)) {
         perror("Cannot bind 0MQ socket");
         return 1;
     }

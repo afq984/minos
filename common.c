@@ -29,12 +29,22 @@ void error_reading_config(const GError* error) {
     fprintf(stderr, "Error reading config: %s\n", error->message);
 }
 
-int parse_net_options(struct NetOptions* options, GKeyFile* key_file) {
+int parse_minos_options(struct MinosOptions* options, GKeyFile* key_file) {
     g_autoptr(GError) error = NULL;
     options->address = g_key_file_get_string(key_file, "Minos", "Address", &error);
     if (error != NULL) {
         error_reading_config(error);
         return 1;
+    }
+    options->sysconfdir = g_key_file_get_string(key_file, "Debug", "SysconfDir", &error);
+    if (error != NULL) {
+        if (error->code == G_KEY_FILE_ERROR_GROUP_NOT_FOUND ||
+            error->code == G_KEY_FILE_ERROR_GROUP_NOT_FOUND) {
+            options->sysconfdir = strdup("/etc");
+        } else {
+            error_reading_config(error);
+            return 1;
+        }
     }
     return 0;
 }
