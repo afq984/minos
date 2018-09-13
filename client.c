@@ -50,6 +50,7 @@ int main(int argc, char** argv) {
     }
 
     const char* databases[] = {"passwd", "group", "shadow"};
+    mode_t perms[3] = {0644, 0644, 0600};
     char* filenames[3];
     for (int i = 0; i < 3; i++) {
         assert(-1 != asprintf(&filenames[i], "%s/%s.minos", minos_conf.sysconfdir, databases[i]));
@@ -68,7 +69,8 @@ int main(int argc, char** argv) {
         }
 
         for (int i = 0; i < 3; i++) {
-            atomic_update_file(filenames[i], zmq_msg_data(&parts[i]), zmq_msg_size(&parts[i]), 0644);
+            atomic_update_file(
+                filenames[i], zmq_msg_data(&parts[i]), zmq_msg_size(&parts[i]), perms[i]);
         }
 
         for (int i = 0; i < 3; i++) {
