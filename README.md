@@ -52,5 +52,5 @@ Password changes on the client may lead to undefined behavior.
     
 ## Installation
 
-* Arch Linux - [PKGBUILD](https://github.com/afg984/minos.PKGBUILD)
+* Arch Linux - [PKGBUILD](https://github.com/afg984/minos-git.PKGBUILD)
 * CentOS - [rpm spec file](https://github.com/afg984/minos.spec)
