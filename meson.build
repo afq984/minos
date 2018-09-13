@@ -19,3 +19,10 @@ executable(
     dependencies: [glib, zmq],
     install: true
 )
+
+shared_library(
+    'nss_minos',
+    'nss.c',
+    version: '2',
+    install: true
+)
