@@ -48,6 +48,7 @@ Minos provides:
 ### Changing passwords
 
 Password changes on the server take effect (broadcasts to the clients) immediately.
+
 Password changes on the client may lead to undefined behavior.
     
 ## Installation
