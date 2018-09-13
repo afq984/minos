@@ -1,0 +1,10 @@
+[Unit]
+Description=Minos Client
+Conflicts=minos-server.service
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/minos-client -C /etc/minos.d/client.conf
+
+[Install]
+WantedBy=multi-user.target

@@ -6,6 +6,8 @@ project(
 glib = dependency('glib-2.0')
 zmq = dependency('libzmq')
 
+systemd_unit_dir = join_paths(get_option('prefix'), 'lib', 'systemd', 'system')
+
 executable(
     'minos-server',
     'server.c', 'common.c',
@@ -25,4 +27,14 @@ shared_library(
     'nss.c',
     version: '2',
     install: true
+)
+
+install_data(
+    'systemd/minos-server.service', 'systemd/minos-client.service',
+    install_dir: systemd_unit_dir
+)
+
+install_data(
+    'server.conf', 'client.conf',
+    install_dir: '/etc/minos.d'
 )
