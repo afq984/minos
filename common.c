@@ -39,7 +39,7 @@ int parse_minos_options(struct MinosOptions* options, GKeyFile* key_file) {
     options->sysconfdir = g_key_file_get_string(key_file, "Debug", "SysconfDir", &error);
     if (error != NULL) {
         if (error->code == G_KEY_FILE_ERROR_GROUP_NOT_FOUND ||
-            error->code == G_KEY_FILE_ERROR_GROUP_NOT_FOUND) {
+            error->code == G_KEY_FILE_ERROR_KEY_NOT_FOUND) {
             options->sysconfdir = strdup("/etc");
         } else {
             error_reading_config(error);
