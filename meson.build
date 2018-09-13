@@ -4,10 +4,11 @@ project(
 )
 
 glib = dependency('glib-2.0')
+zmq = dependency('libzmq')
 
 executable(
     'minos-server',
     'common.c', 'server.c',
-    dependencies: glib,
+    dependencies: [glib, zmq],
     install: true
 )

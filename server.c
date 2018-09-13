@@ -4,9 +4,29 @@
 #include <pwd.h>
 #include <shadow.h>
 
+#include <zmq.h>
+
 #include "common.h"
 
-int read_system_pwd_spwd(FILE* out, FILE* sout, const struct EntOptions* user_conf) {
+struct Snapshot {
+    char* buf;
+    size_t len;
+};
+
+const int timeoutms = 4000;
+
+int read_system_pwd_spwd(
+    struct Snapshot* psnap, struct Snapshot* spsnap, const struct EntOptions* user_conf) {
+    FILE* out = open_memstream(&psnap->buf, &psnap->len);
+    if (out == NULL) {
+        perror("unexpected error during open_memstream");
+        return 1;
+    }
+    FILE* sout = open_memstream(&spsnap->buf, &spsnap->len);
+    if (sout == NULL) {
+        perror("unexpected error during open_memstream");
+        return 1;
+    }
     setpwent();
     while (1) {
         errno = 0;
@@ -27,7 +47,7 @@ int read_system_pwd_spwd(FILE* out, FILE* sout, const struct EntOptions* user_co
         }
         struct spwd* shadow = getspnam(pwd->pw_name);
         if (shadow == NULL) {
-            perror("warning unexpected error in getspnam()");
+            perror("warning: unexpected error in getspnam()");
         } else {
             if (-1 == putspent(shadow, sout)) {
                 perror("unexpected error in putspent()");
@@ -35,10 +55,23 @@ int read_system_pwd_spwd(FILE* out, FILE* sout, const struct EntOptions* user_co
             }
         }
     }
+    if (0 != fclose(out)) {
+        perror("unexpected error during fclose");
+        return 1;
+    }
+    if (0 != fclose(sout)) {
+        perror("unexpected error during fclose");
+        return 1;
+    }
     return 0;
 }
 
-int read_system_grp(FILE* out, const struct EntOptions* group_conf) {
+int read_system_grp(struct Snapshot* gsnap, const struct EntOptions* group_conf) {
+    FILE* out = open_memstream(&gsnap->buf, &gsnap->len);
+    if (out == NULL) {
+        perror("unexpected error during open_memstream");
+        return 1;
+    }
     setgrent();
     while (1) {
         errno = 0;
@@ -57,6 +90,10 @@ int read_system_grp(FILE* out, const struct EntOptions* group_conf) {
             perror("unexpected error putgrent()");
             return 1;
         }
+    }
+    if (0 != fclose(out)) {
+        perror("unexpected error during fclose");
+        return 1;
     }
     return 0;
 }
@@ -86,44 +123,77 @@ int main(int argc, char** argv) {
         return 1;
     }
 
-    char* pwdbuf = NULL;
-    size_t pwdbufsize;
-    FILE* pwdmem = open_memstream(&pwdbuf, &pwdbufsize);
-    if (pwdmem == NULL) {
-        perror("unexpected error during open_memstream");
+    void* zctx = zmq_ctx_new();
+    if (zctx == NULL) {
+        perror("Cannot create 0MQ context");
         return 1;
     }
-    char* spwdbuf = NULL;
-    size_t spwdbufsize;
-    FILE* spwdmem = open_memstream(&spwdbuf, &spwdbufsize);
-    if (spwdmem == NULL) {
-        perror("unexpected error during open_memstream");
+    void* zsock = zmq_socket(zctx, ZMQ_XPUB);
+    if (zsock == NULL) {
+        perror("Cannot create 0MQ socket");
         return 1;
     }
-    if (read_system_pwd_spwd(pwdmem, spwdmem, &user_conf)) {
+    if (0 != zmq_bind(zsock, net_conf.address)) {
+        perror("Cannot bind 0MQ socket");
         return 1;
     }
-    if (0 != fclose(pwdmem)) {
-        perror("unexpected error during fclose");
+    int xpub_verbose = 1;
+    if (0 != zmq_setsockopt(zsock, ZMQ_XPUB_VERBOSE, &xpub_verbose, sizeof xpub_verbose)) {
+        fprintf(stderr, "zmq_setsockopt: %s\n", zmq_strerror(errno));
         return 1;
     }
-    if (0 != fclose(spwdmem)) {
-        perror("unexpected error during fclose");
-        return 1;
-    }
-    printf("%s", pwdbuf);
-    printf("%s", spwdbuf);
+    while (1) {
+        zmq_pollitem_t items[] = {{zsock, 0, ZMQ_POLLIN, 0}};
+        int poll = zmq_poll(items, 1, timeoutms);
+        if (poll == -1) {
+            fprintf(stderr, "internal error in zmq_poll: %s\n", strerror(errno));
+            return 1;
+        }
+        int send = 0;
+        if (poll == 0) {
+            send = 1;
+        }
+        if (items[0].revents & ZMQ_POLLIN) {
+            char buf[1];
+            if (-1 == zmq_recv(zsock, buf, sizeof buf, 0)) {
+                fprintf(stderr, "internal error in zmq_recv: %s\n", strerror(errno));
+                return 1;
+            }
+            if (buf[0] == 1) {
+                puts("Subscription");
+                send = 1;
+            } else {
+                puts("Unsubscription");
+                send = 1;
+            }
+        }
+        if (send) {
+            struct Snapshot psnap = {0};
+            struct Snapshot spsnap = {0};
+            if (read_system_pwd_spwd(&psnap, &spsnap, &user_conf)) {
+                goto cleanup;
+            }
 
-    char* grpbuf = NULL;
-    size_t grpbufsize;
-    FILE* grpmem = open_memstream(&grpbuf, &grpbufsize);
-    if (grpmem == NULL) {
-        perror("unexpected error during open_memstream");
-        return 1;
+            struct Snapshot gsnap = {0};
+            if (read_system_grp(&gsnap, &group_conf)) {
+                goto cleanup;
+            }
+            if (psnap.len != zmq_send(zsock, psnap.buf, psnap.len, ZMQ_SNDMORE)) {
+                fprintf(stderr, "failed to send psnap: %s\n", zmq_strerror(errno));
+                return 1;
+            }
+            if (gsnap.len != zmq_send(zsock, gsnap.buf, gsnap.len, ZMQ_SNDMORE)) {
+                fprintf(stderr, "failed to send gsnap: %s\n", zmq_strerror(errno));
+                return 1;
+            }
+            if (spsnap.len != zmq_send(zsock, spsnap.buf, spsnap.len, 0)) {
+                fprintf(stderr, "failed to send spsnap: %s\n", zmq_strerror(errno));
+                return 1;
+            }
+        cleanup:
+            free(psnap.buf);
+            free(gsnap.buf);
+            free(spsnap.buf);
+        }
     }
-    if (read_system_grp(grpmem, &group_conf)) {
-        return 1;
-    }
-    fclose(grpmem);
-    printf("%s", grpbuf);
 }
