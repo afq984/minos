@@ -28,8 +28,10 @@ int read_system_pwd_spwd(
     FILE* sout = open_memstream(&spsnap->buf, &spsnap->len);
     if (sout == NULL) {
         perror("unexpected error during open_memstream");
+        fclose(out);
         return 1;
     }
+    int rc = 0;
     setpwent();
     while (1) {
         errno = 0;
@@ -46,7 +48,8 @@ int read_system_pwd_spwd(
         }
         if (-1 == putpwent(pwd, out)) {
             perror("unexpected error in putpwent()");
-            return 1;
+            rc = 1;
+            goto cleanup;
         }
         struct spwd* shadow = getspnam(pwd->pw_name);
         if (shadow == NULL) {
@@ -54,19 +57,22 @@ int read_system_pwd_spwd(
         } else {
             if (-1 == putspent(shadow, sout)) {
                 perror("unexpected error in putspent()");
-                return 1;
+                rc = 1;
+                goto cleanup;
             }
         }
     }
+cleanup:
     if (0 != fclose(out)) {
         perror("unexpected error during fclose");
-        return 1;
+        rc = 1;
     }
     if (0 != fclose(sout)) {
         perror("unexpected error during fclose");
-        return 1;
+        rc = 1;
     }
-    return 0;
+    endpwent();
+    return rc;
 }
 
 int read_system_grp(struct Snapshot* gsnap, const struct EntOptions* group_conf) {
@@ -76,6 +82,7 @@ int read_system_grp(struct Snapshot* gsnap, const struct EntOptions* group_conf)
         return 1;
     }
     setgrent();
+    int rc = 0;
     while (1) {
         errno = 0;
         struct group* grp = getgrent();
@@ -91,14 +98,17 @@ int read_system_grp(struct Snapshot* gsnap, const struct EntOptions* group_conf)
         }
         if (-1 == putgrent(grp, out)) {
             perror("unexpected error putgrent()");
-            return 1;
+            rc = 1;
+            goto cleanup;
         }
     }
+cleanup:
+    endgrent();
     if (0 != fclose(out)) {
         perror("unexpected error during fclose");
-        return 1;
+        rc = 1;
     }
-    return 0;
+    return rc;
 }
 
 int main(int argc, char** argv) {
