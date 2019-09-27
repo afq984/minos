@@ -65,16 +65,26 @@ static enum nss_status minos_endent(struct MinosState* st) {
                 return status;                                                 \
             }                                                                  \
         }                                                                      \
+        fpos_t pos;                                                            \
+        int pos_r = fgetpos(STATE.file, &pos);                                 \
         RESULT_TYPE* resultp;                                                  \
         int error = FGETXXENT_R(STATE.file, result, buffer, buflen, &resultp); \
         if (error == 0) {                                                      \
             return NSS_STATUS_SUCCESS;                                         \
         }                                                                      \
-        *errnop = error;                                                       \
         if (error == ENOENT) {                                                 \
+            *errnop = ENOENT;                                                  \
             return NSS_STATUS_NOTFOUND;                                        \
         }                                                                      \
-        return NSS_STATUS_TRYAGAIN;                                            \
+        if (error == ERANGE) {                                                 \
+            if (pos_r == 0) {                                                  \
+                fsetpos(STATE.file, &pos);                                     \
+            }                                                                  \
+            *errnop = ERANGE;                                                  \
+            return NSS_STATUS_TRYAGAIN;                                        \
+        }                                                                      \
+        *errnop = ENOENT;                                                      \
+        return NSS_STATUS_UNAVAIL;                                             \
     }
 
 #define GETXXBYYY(PATHNAME, RESULT_TYPE, FGETXXENT_R, BREAK_CONDITION)                     \
