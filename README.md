@@ -50,7 +50,11 @@ Minos provides:
 Password changes on the server take effect (broadcasts to the clients) immediately.
 
 Password changes on the client may lead to undefined behavior.
-    
+   
+### Other hints
+
+`minos-server.service` will not start while `minos-client.service` is running.
+
 ## Installation
 
 * Arch Linux - [PKGBUILD](https://github.com/afg984/minos-git.PKGBUILD)
