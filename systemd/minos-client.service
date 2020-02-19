@@ -1,6 +1,6 @@
 [Unit]
 Description=Minos Client
-Conflicts=minos-server.service
+After=network.target
 
 [Service]
 Type=simple
