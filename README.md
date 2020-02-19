@@ -14,12 +14,12 @@ Minos provides:
 ### Server setup
 
 1.  Change the `Address` in `/etc/minos.d/server.conf` to your server's address in the local network
-  
+
     Example:
     ```
     Address=tcp://10.0.0.1:6148
     ```
-    
+
     There are many other options in `server.conf`, which allow you to specify which users and groups
     you would like to make available to the client machines.
 
@@ -37,23 +37,23 @@ Minos provides:
 2.  Start and enable `minos-client.service`
 3.  Edit `/etc/nsswitch.conf` and add `minos` to `passwd` `group` and `shadow`
 
-    Example: 
-    
+    Example:
+
     ```
     passwd: files mymachines systemd minos
     group: files mymachines systemd minos
     shadow: files minos
     ```
 
-### Changing passwords
+### Changing passwords (passwd) / shells (chsh)
 
 Password changes on the server take effect (broadcasts to the clients) immediately.
 
-Password changes on the client may lead to undefined behavior.
-   
+Password changes on the client should be blocked by the system.
+
 ### Other hints
 
-`minos-server.service` will not start while `minos-client.service` is running.
+You do not need to run `minos-client` and `minos-server` in the same node.
 
 ## Installation
 
