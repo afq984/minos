@@ -59,3 +59,34 @@ You do not need to run `minos-client` and `minos-server` in the same node.
 
 * Arch Linux - [PKGBUILD](https://github.com/afg984/minos-git.PKGBUILD)
 * CentOS - [rpm spec file](https://github.com/afg984/minos.spec)
+
+Note: if compiling/installing manually, make sure that `libnss_minos.so.2` gets put into the right location on your distribution.
+It should live beside existing nss modules:
+
+```
+$ ls /usr/lib/libnss*.so.2
+/usr/lib/libnss_compat.so.2  /usr/lib/libnss_hesiod.so.2      /usr/lib/libnss_resolve.so.2
+/usr/lib/libnss_db.so.2      /usr/lib/libnss_minos.so.2       /usr/lib/libnss_systemd.so.2
+/usr/lib/libnss_dns.so.2     /usr/lib/libnss_myhostname.so.2
+/usr/lib/libnss_files.so.2   /usr/lib/libnss_mymachines.so.2
+```
+
+
+## Troubleshooting
+
+If minos does not work, check the following:
+
+1.  Check that the data is transferred to the client machines.
+    On the client machine, see if the files `/etc/passwd.minos`, `/etc/group.minos`, `/etc/shadow.minos` exist.
+    They should have the user, group, shadow entries you configured to synchronize.
+    
+2.  Check nss is working properly on client machines.
+    On the client machine, run getent:
+    
+    ```
+    getent -s minos passwd
+    getent -s minos group
+    sudo getent -s minos shadow
+    ```
+
+    They should output the same stuff as `/etc/{passwd,group,shadow}.minos` if `/etc/nsswitch.conf` is properly configured.
