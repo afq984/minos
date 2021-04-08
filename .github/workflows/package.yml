@@ -18,7 +18,7 @@ jobs:
         pacman -Syu --noconfirm --needed dbus sed curl util-linux
         dbus-uuidgen --ensure=/etc/machine-id
         useradd -m build -d /build
-        cp PKGBUILD /build/
+        cp packaging/archlinux/PKGBUILD /build/
 
     - name: Build
       run: |
