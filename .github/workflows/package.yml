@@ -1,0 +1,33 @@
+on: push
+
+jobs:
+  archlinux:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+    container:
+      image: ghcr.io/afq984/archlinux-devtools:latest
+      options: --privileged
+      volumes:
+        - /sys/fs/cgroup:/sys/fs/cgroup
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: Prepare environment
+      run: |
+        pacman -Syu --noconfirm --needed dbus sed curl util-linux
+        dbus-uuidgen --ensure=/etc/machine-id
+        useradd -m build -d /build
+        cp PKGBUILD /build/
+
+    - name: Build
+      run: |
+        cd /build
+        extra-x86_64-build -- -U build
+        mkdir -p /staging
+        cp $(runuser -u build -- makepkg --packagelist) /staging
+
+    - uses: actions/upload-artifact@v2
+      with:
+          name: archlinux
+          path: /staging/
